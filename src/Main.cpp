@@ -80,11 +80,13 @@ glm::vec3 cubePositions[] = {
 
 // Global access to material and light properties for real-time editing.
 float materialShininess = 32.0f;
+float materialEmissiveStrength = 0.0f;
 glm::vec3 lightAmbient(0.2f, 0.2f, 0.2f);
 glm::vec3 lightDiffuse(0.5f, 0.5f, 0.5f); // Darken diffuse light a bit.
 glm::vec3 lightSpecular(1.0f, 1.0f, 1.0f);
 glm::vec3 lightPos(1.2f, 1.0f, 2.0f);
-float yOscillation = 1.2f;
+float lightYOscillation = 1.2f;
+float lightTravelTime = 2.0f;
 
 // Tells OpenGL which vertices belong to which triangle. Unused for now.
 unsigned int indices[] = {
@@ -157,7 +159,7 @@ int main()
 	
 	unsigned int diffuseMap = loadTexture("resources\\container2.png");
 	unsigned int specularMap = loadTexture("resources\\container2_specular.png");
-	unsigned int emissionMap = loadTexture("resources\\matrix.jpg");
+	unsigned int emissiveMap = loadTexture("resources\\matrix.jpg");
 
 
 	
@@ -180,11 +182,11 @@ int main()
 	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
 	// Enable vertex attrib pointers (vec3 pos, vec3 normal, vec2 texCoords)
-	VertexAttribBuilder meshBuilder = VertexAttribBuilder();
-	meshBuilder.AddAttribute(3, GL_FLOAT);
-	meshBuilder.AddAttribute(3, GL_FLOAT);
-	meshBuilder.AddAttribute(2, GL_FLOAT);
-	meshBuilder.Finalize();
+	VertexAttribBuilder meshAttribBuilder = VertexAttribBuilder();
+	meshAttribBuilder.AddAttribute(3, GL_FLOAT);
+	meshAttribBuilder.AddAttribute(3, GL_FLOAT);
+	meshAttribBuilder.AddAttribute(2, GL_FLOAT);
+	meshAttribBuilder.Finalize();
 
 
 	
@@ -227,6 +229,7 @@ int main()
 			if (ImGui::TreeNode("Material"))
 			{
 				ImGui::SliderFloat("Shininess", &materialShininess, 0.1, 64.0);
+				ImGui::SliderFloat("Emissive Strength", &materialEmissiveStrength, 0.0, 1.0);
 				
 				ImGui::TreePop();
 			}
@@ -236,7 +239,8 @@ int main()
 				ImGui::ColorEdit3("Ambient", (float*)&lightAmbient);
 				ImGui::ColorEdit3("Diffuse", (float*)&lightDiffuse);
 				ImGui::ColorEdit3("Specular", (float*)&lightSpecular);
-				ImGui::SliderFloat("Y Oscillation", &yOscillation, 0.0f, 2.0f);
+				ImGui::SliderFloat("Y Oscillation", &lightYOscillation, 0.0f, 2.0f);
+				ImGui::SliderFloat("Travel Time", &lightTravelTime, 1.0f, 5.0f);
 
 				ImGui::TreePop();
 			}
@@ -252,9 +256,9 @@ int main()
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		// Move light source around.
-		lightPos.x = sin((glfwGetTime() * 3.1415f) / 3.0f) * 2.0f;
-		lightPos.y = sin((glfwGetTime() * 3.1415f) / 1.0f) * yOscillation;
-		lightPos.z = cos((glfwGetTime() * 3.1415f) / 3.0f) * 2.0f;
+		lightPos.x = sin((glfwGetTime() * 3.1415f) / (3.0f * lightTravelTime)) * 2.0f;
+		lightPos.y = sin((glfwGetTime() * 3.1415f) / (1.0f * lightTravelTime)) * lightYOscillation;
+		lightPos.z = cos((glfwGetTime() * 3.1415f) / (3.0f * lightTravelTime)) * 2.0f;
 
 		// Bind textures to texture units/targets for the samplers to use.
 		glActiveTexture(GL_TEXTURE0);
@@ -262,20 +266,29 @@ int main()
 		glActiveTexture(GL_TEXTURE1);
 		glBindTexture(GL_TEXTURE_2D, specularMap);
 		glActiveTexture(GL_TEXTURE2);
-		glBindTexture(GL_TEXTURE_2D, emissionMap);
+		glBindTexture(GL_TEXTURE_2D, emissiveMap);
 
 		// Set lighting-related values for our fragment shader.
 		lightingShader.use();
-		// Use texture unit 0 as sampler source (diffuse map) and so on.
+		// Use texture unit 0 as sampler source for the diffuse map and so on.
 		lightingShader.setInt("material.diffuse", 0);
 		lightingShader.setInt("material.specular", 1);
-		lightingShader.setInt("material.emission", 2);
+		lightingShader.setInt("material.emissive", 2);
 		lightingShader.setFloat("material.shininess", materialShininess);
+		lightingShader.setFloat("material.emissiveStrength", materialEmissiveStrength);
 
 		lightingShader.setVec3("light.ambient", lightAmbient);
 		lightingShader.setVec3("light.diffuse", lightDiffuse);
 		lightingShader.setVec3("light.specular", lightSpecular);
-		lightingShader.setVec3("light.position", lightPos);
+		lightingShader.setVec3("light.position", camera.Position);
+		lightingShader.setVec3("light.direction", camera.Front);
+		lightingShader.setFloat("light.cutOff", glm::cos(glm::radians(12.5f)));
+		lightingShader.setFloat("light.outerCutOff", glm::cos(glm::radians(17.5f)));
+		/*
+		lightingShader.setFloat("light.constant", 1.0f);
+		lightingShader.setFloat("light.linear", 0.09f);
+		lightingShader.setFloat("light.quadratic", 0.032f);
+		*/
 
 		// Defining view matrices (model [not here], view, projection) to transform vertices to NDC.
 		glm::mat4 view = camera.GetViewMatrix();
@@ -299,6 +312,7 @@ int main()
 		}
 
 		// Configure the light source shader.
+		/*
 		lightSourceShader.use();
 		lightSourceShader.setMat4("view", view);
 		lightSourceShader.setMat4("projection", projection);
@@ -312,6 +326,7 @@ int main()
 		// Draw the light source cube.
 		glBindVertexArray(lightVAO);
 		glDrawArrays(GL_TRIANGLES, 0, 36);
+		*/
 
 		// Unbind the vertex array after it has been used.
 		glBindVertexArray(0);

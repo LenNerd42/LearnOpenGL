@@ -13,22 +13,40 @@ struct Material
 {
     sampler2D diffuse;
     sampler2D specular;
-    sampler2D emission;
+    sampler2D emissive;
     float shininess;
+    float emissiveStrength;
 };
 
 uniform Material material;
 
-struct Light
+struct PointLight
 {
     vec3 position;
     
     vec3 ambient;
     vec3 diffuse;
     vec3 specular;
+    
+    float constant;
+    float linear;
+    float quadratic;
 };
 
-uniform Light light;
+struct SpotLight
+{
+    vec3 position;
+    vec3 direction;
+
+    vec3 ambient;
+    vec3 diffuse;
+    vec3 specular;
+    
+    float cutOff;
+    float outerCutOff;
+};
+
+uniform SpotLight light;
 
 void main()
 {
@@ -37,8 +55,8 @@ void main()
     
     // Calculate diffuse component.
     vec3 norm = normalize(normal);
-    // Points from cube to light source.
     vec3 lightPosView = vec3(view * vec4(light.position, 1.0));
+    // Points from cube to light source.
     vec3 lightDir = normalize(lightPosView - fragPos);
     
     float diff = max(dot(norm, lightDir), 0.0);
@@ -55,9 +73,39 @@ void main()
     vec3 specular = light.specular * shininess * vec3(texture(material.specular, texCoords));
     
     // Calculate emissive component.
-    vec3 emissive = vec3(texture(material.emission, texCoords));
+    vec3 emissive = vec3(texture(material.emissive, texCoords)) * material.emissiveStrength;
     
-    // Combine all lighting types (ambient, diffuse, specular, emissive). There you go, (modified) Phong lighting!
-    vec3 result = ambient + diffuse + specular + emissive;
-    fragColor = vec4(result, 1.0);
+    // Point Light - calculate and apply attenuation to all components.
+    /*
+    float distance = length(light.position - fragPos);
+    float attenuation = 1.0 / (light.constant + light.linear * distance + light.quadratic * pow(distance, 2.0));
+    
+    ambient *= attenuation;
+    diffuse *= attenuation;
+    specular *= attenuation;
+    // We don't modify the emissive component, since that one emits light itself.
+    */
+    
+    // Spot Light - Check if fragment is within cone.
+    // Only transform the direction by the top 3x3 part of the view matrix, as this doesn't include translation.
+    vec3 spotDirView = mat3(view) * light.direction;
+    float theta = dot(lightDir, normalize(-spotDirView)); // Camera in view space points towards negative Z axis.
+    float epsilon = light.cutOff - light.outerCutOff;
+    float intensity = clamp((theta - light.outerCutOff) / epsilon, 0.0, 1.0);
+    
+    // Spot light illuminates fragment.
+    if(theta > light.outerCutOff)
+    {
+        // Combine all lighting types (ambient, diffuse, specular, emissive). There you go, (modified) Phong lighting!
+        // Ambient component will be left unaffected.
+        diffuse *= intensity;
+        specular *= intensity;
+        vec3 result = ambient + diffuse + specular + emissive;
+        fragColor = vec4(result, 1.0);
+    }
+    else
+    {
+        vec3 result = ambient;
+        fragColor = vec4(result, 1.0);
+    }
 }
