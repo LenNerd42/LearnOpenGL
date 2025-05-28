@@ -16,6 +16,7 @@
 #include <glm/gtc/type_ptr.hpp>
 
 #include "Main.h"
+
 #include "Shader.h"
 #include "Camera.h"
 #include "Util.h"
@@ -78,23 +79,59 @@ glm::vec3 cubePositions[] = {
 	glm::vec3(-1.3f,  1.0f, -1.5f)  
 };
 
-// Global access to material and light properties for real-time editing.
-float materialShininess = 32.0f;
-float materialEmissiveStrength = 0.0f;
-glm::vec3 lightAmbient(0.2f, 0.2f, 0.2f);
-glm::vec3 lightDiffuse(0.5f, 0.5f, 0.5f); // Darken diffuse light a bit.
-glm::vec3 lightSpecular(1.0f, 1.0f, 1.0f);
-glm::vec3 lightPos(1.2f, 1.0f, 2.0f);
-float lightYOscillation = 1.2f;
-float lightTravelTime = 2.0f;
-
-// Tells OpenGL which vertices belong to which triangle. Unused for now.
-unsigned int indices[] = {
-	0, 1, 2,
-	0, 2, 3
+glm::vec3 pointLightPositions[] = {
+	glm::vec3( 0.7f,  0.2f,  2.0f),
+	glm::vec3( 2.3f, -3.3f, -4.0f),
+	glm::vec3(-4.0f,  2.0f, -12.0f),
+	glm::vec3( 0.0f,  0.0f, -3.0f)
 };
 
-int windowWidth = 800, windowHeight = 600;
+// Global access to material and light properties for real-time editing.
+struct Material
+{
+	float shininess = 32.0f;
+	float emissiveStrength = 0.0f;
+};
+
+struct Light
+{
+	glm::vec3 color = glm::vec3(1.0f, 1.0f, 1.0f);
+};
+
+struct DirectionalLight : Light
+{
+	glm::vec3 direction;
+};
+
+struct PointLight : Light
+{
+	glm::vec3 position;
+	float constant = 1.0f;
+	float linear;
+	float quadratic;
+};
+
+struct SpotLight : Light
+{
+	glm::vec3 position;
+	glm::vec3 direction;
+	float constant = 1.0f;
+	float linear;
+	float quadratic;
+	float cutOff;
+	float outerCutOff;
+};
+
+struct Material material;
+struct DirectionalLight directionalLight;
+#define NR_POINT_LIGHTS 4
+struct PointLight pointLights[NR_POINT_LIGHTS];
+struct SpotLight spotLight;
+glm::vec4 clearColor = glm::vec4(0.1f, 0.1f, 0.1f, 1.0f);
+bool wireframe = false;
+
+
+int windowWidth = 1600, windowHeight = 900;
 
 Camera camera = Camera(glm::vec3(0.0f, 0.0f, 3.0f));
 
@@ -137,6 +174,9 @@ int main()
 	glfwSetCursorPosCallback(window, mouse_callback);
 	glfwSetScrollCallback(window, scroll_callback);
 	glfwSetKeyCallback(window, key_callback);
+
+	// Enable depth testing with the z-buffer.
+	glEnable(GL_DEPTH_TEST);
 
 
 	
@@ -203,8 +243,20 @@ int main()
 
 
 	
-	// Enable depth testing with the z-buffer.
-	glEnable(GL_DEPTH_TEST);
+	// Light initialization.
+	directionalLight.direction = glm::vec3(1.0f, -1.0f, 1.0f);
+
+	for (unsigned int i = 0; i < NR_POINT_LIGHTS; i++)
+	{
+		pointLights[i].position = pointLightPositions[i];
+		pointLights[i].linear = 0.09f;
+		pointLights[i].quadratic = 0.032f;
+	}
+
+	spotLight.linear = 0.09f;
+	spotLight.quadratic = 0.032f;
+	spotLight.cutOff = 12.5f;
+	spotLight.outerCutOff = 17.5f;
 
 	// Main loop
 	while (!glfwWindowShouldClose(window))
@@ -224,41 +276,74 @@ int main()
 
 		// Construct my own very awesome debug window.
 		ImGui::Begin("Scene Settings");
+		if (ImGui::Button("Toggle Wireframe"))
+		{
+			wireframe = !wireframe;
+			if (wireframe) glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+			else glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+		}
+			
 		if (ImGui::CollapsingHeader("Scene Colors"))
 		{
+			ImGui::ColorEdit4("Background Color", (float*)&clearColor);
+			
 			if (ImGui::TreeNode("Material"))
 			{
-				ImGui::SliderFloat("Shininess", &materialShininess, 0.1, 64.0);
-				ImGui::SliderFloat("Emissive Strength", &materialEmissiveStrength, 0.0, 1.0);
+				ImGui::SliderFloat("Shininess", &material.shininess, 0.1, 64.0);
+				ImGui::SliderFloat("Emissive Strength", &material.emissiveStrength, 0.0, 1.0);
 				
 				ImGui::TreePop();
 			}
 
-			if (ImGui::TreeNode("Light"))
+			if (ImGui::TreeNode("Directional Light"))
 			{
-				ImGui::ColorEdit3("Ambient", (float*)&lightAmbient);
-				ImGui::ColorEdit3("Diffuse", (float*)&lightDiffuse);
-				ImGui::ColorEdit3("Specular", (float*)&lightSpecular);
-				ImGui::SliderFloat("Y Oscillation", &lightYOscillation, 0.0f, 2.0f);
-				ImGui::SliderFloat("Travel Time", &lightTravelTime, 1.0f, 5.0f);
+				ImGui::SliderFloat3("Direction", (float*)&directionalLight.direction, -1.0f, 1.0f);
+				ImGui::ColorEdit3("Color", (float*)&directionalLight.color);
+
+				ImGui::TreePop();
+			}
+
+			if (ImGui::TreeNode("Point Lights"))
+			{
+				for (unsigned int i = 0; i < NR_POINT_LIGHTS; i++)
+				{
+					std::ostringstream ss;
+					ss << "Point Light #" << i + 1;
+
+					if (ImGui::TreeNode(ss.str().c_str()))
+					{
+						ImGui::SliderFloat3("Position", (float*)&pointLights[i].position, -20.0f, 20.0f);
+						ImGui::ColorEdit3("Color", (float*)&pointLights[i].color);
+						ImGui::SliderFloat("Linear Falloff", &pointLights[i].linear, 0.0f, 0.5f);
+						ImGui::SliderFloat("Quadratic Falloff", &pointLights[i].quadratic, 0.0f, 0.5f);
+						
+						ImGui::TreePop();
+					}
+				}
+
+				ImGui::TreePop();
+			}
+
+			if (ImGui::TreeNode("Spot Light"))
+			{
+				ImGui::ColorEdit3("Color", (float*)&spotLight.color);
+				ImGui::SliderFloat("Inner Cone Angle", &spotLight.cutOff, 1.0f, 89.0f);
+				ImGui::SliderFloat("Outer Cone Angle", &spotLight.outerCutOff, 1.0f, 89.0f);
+				ImGui::SliderFloat("Linear Falloff", &spotLight.linear, 0.0f, 1.0f);
+				ImGui::SliderFloat("Quadratic Falloff", &spotLight.quadratic, 0.0f, 1.0f);
 
 				ImGui::TreePop();
 			}
 		}
-		char* frameTime = new char[30];
-		sprintf_s(frameTime, 30, "%.2f FPS / %.2f ms", 1.0f / deltaTime, deltaTime * 1000.0f);
+		char* frameTime = new char[32];
+		sprintf_s(frameTime, 32, "%.2f FPS / %.2f ms", 1.0f / deltaTime, deltaTime * 1000.0f);
 		ImGui::Text(frameTime);
 		ImGui::End();
 
 		// Rendering
 		// Clear the color and depth buffers from the previous frame.
-		glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+		glClearColor(clearColor.x, clearColor.y, clearColor.z, clearColor.w);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-		// Move light source around.
-		lightPos.x = sin((glfwGetTime() * 3.1415f) / (3.0f * lightTravelTime)) * 2.0f;
-		lightPos.y = sin((glfwGetTime() * 3.1415f) / (1.0f * lightTravelTime)) * lightYOscillation;
-		lightPos.z = cos((glfwGetTime() * 3.1415f) / (3.0f * lightTravelTime)) * 2.0f;
 
 		// Bind textures to texture units/targets for the samplers to use.
 		glActiveTexture(GL_TEXTURE0);
@@ -274,21 +359,60 @@ int main()
 		lightingShader.setInt("material.diffuse", 0);
 		lightingShader.setInt("material.specular", 1);
 		lightingShader.setInt("material.emissive", 2);
-		lightingShader.setFloat("material.shininess", materialShininess);
-		lightingShader.setFloat("material.emissiveStrength", materialEmissiveStrength);
+		lightingShader.setFloat("material.shininess", material.shininess);
+		lightingShader.setFloat("material.emissiveStrength", material.emissiveStrength);
 
-		lightingShader.setVec3("light.ambient", lightAmbient);
-		lightingShader.setVec3("light.diffuse", lightDiffuse);
-		lightingShader.setVec3("light.specular", lightSpecular);
-		lightingShader.setVec3("light.position", camera.Position);
-		lightingShader.setVec3("light.direction", camera.Front);
-		lightingShader.setFloat("light.cutOff", glm::cos(glm::radians(12.5f)));
-		lightingShader.setFloat("light.outerCutOff", glm::cos(glm::radians(17.5f)));
-		/*
-		lightingShader.setFloat("light.constant", 1.0f);
-		lightingShader.setFloat("light.linear", 0.09f);
-		lightingShader.setFloat("light.quadratic", 0.032f);
-		*/
+		// Directional Light attributes.
+		lightingShader.setVec3("directionalLight.direction", directionalLight.direction);
+		lightingShader.setVec3("directionalLight.ambient", directionalLight.color * 0.1f);
+		lightingShader.setVec3("directionalLight.diffuse", directionalLight.color * 0.5f);
+		lightingShader.setVec3("directionalLight.specular", directionalLight.color);
+
+		// Point Light attributes.
+		for (int i = 0; i < NR_POINT_LIGHTS; i++)
+		{
+			std::ostringstream ss1;
+			ss1 << "pointLights[" << i << "].position";
+			lightingShader.setVec3(ss1.str(), pointLights[i].position);
+			
+			std::ostringstream ss2;
+			ss2 << "pointLights[" << i << "].ambient";
+			lightingShader.setVec3(ss2.str(), pointLights[i].color * 0.1f);
+
+			std::ostringstream ss3;
+			ss3 << "pointLights[" << i << "].diffuse";
+			lightingShader.setVec3(ss3.str(), pointLights[i].color * 0.5f);
+
+			std::ostringstream ss4;
+			ss4 << "pointLights[" << i << "].specular";
+			lightingShader.setVec3(ss4.str(), pointLights[i].color);
+
+			std::ostringstream ss5;
+			ss5 << "pointLights[" << i << "].constant";
+			lightingShader.setFloat(ss5.str(), pointLights[i].constant);
+
+			std::ostringstream ss6;
+			ss6 << "pointLights[" << i << "].linear";
+			lightingShader.setFloat(ss6.str(), pointLights[i].linear);
+
+			std::ostringstream ss7;
+			ss7 << "pointLights[" << i << "].quadratic";
+			lightingShader.setFloat(ss7.str(), pointLights[i].quadratic);
+		}
+
+		// Spotlight attributes.
+		spotLight.position = camera.Position;
+		spotLight.direction = camera.Front;
+		lightingShader.setVec3("spotLight.position", spotLight.position);
+		lightingShader.setVec3("spotLight.direction", spotLight.direction);
+		lightingShader.setVec3("spotLight.ambient", spotLight.color * 0.1f);
+		lightingShader.setVec3("spotLight.diffuse", spotLight.color * 0.5f);
+		lightingShader.setVec3("spotLight.specular", spotLight.color);
+		lightingShader.setFloat("spotLight.constant", spotLight.constant);
+		lightingShader.setFloat("spotLight.linear", spotLight.linear);
+		lightingShader.setFloat("spotLight.quadratic", spotLight.quadratic);
+		lightingShader.setFloat("spotLight.cutOff", glm::cos(glm::radians(spotLight.cutOff)));
+		lightingShader.setFloat("spotLight.outerCutOff", glm::cos(glm::radians(spotLight.outerCutOff)));
 
 		// Defining view matrices (model [not here], view, projection) to transform vertices to NDC.
 		glm::mat4 view = camera.GetViewMatrix();
@@ -312,21 +436,23 @@ int main()
 		}
 
 		// Configure the light source shader.
-		/*
 		lightSourceShader.use();
 		lightSourceShader.setMat4("view", view);
 		lightSourceShader.setMat4("projection", projection);
-		lightSourceShader.setVec3("lightColor", lightSpecular);
 
-		glm::mat4 model = glm::mat4(1.0f);
-		model = glm::translate(model, lightPos);
-		model = glm::scale(model, glm::vec3(0.2f));
-		lightSourceShader.setMat4("model", model);
-
-		// Draw the light source cube.
+		// Draw the light source cubes.
 		glBindVertexArray(lightVAO);
-		glDrawArrays(GL_TRIANGLES, 0, 36);
-		*/
+		for (unsigned int i = 0; i < NR_POINT_LIGHTS; i++)
+		{
+			glm::mat4 model = glm::mat4(1.0f);
+			model = glm::translate(model, pointLights[i].position);
+			model = glm::scale(model, glm::vec3(0.2f));
+			lightSourceShader.setMat4("model", model);
+
+			lightSourceShader.setVec3("lightColor", pointLights[i].color);
+			
+			glDrawArrays(GL_TRIANGLES, 0, 36);
+		}
 
 		// Unbind the vertex array after it has been used.
 		glBindVertexArray(0);
