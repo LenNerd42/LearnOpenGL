@@ -123,10 +123,16 @@ struct SpotLight : Light
 };
 
 struct Material material;
+
 struct DirectionalLight directionalLight;
 #define NR_POINT_LIGHTS 4
 struct PointLight pointLights[NR_POINT_LIGHTS];
 struct SpotLight spotLight;
+
+float ambientMultiplier = 0.1f;
+float diffuseMultiplier = 0.5f;
+float specularMultiplier = 1.0f;
+
 glm::vec4 clearColor = glm::vec4(0.1f, 0.1f, 0.1f, 1.0f);
 bool wireframe = false;
 
@@ -282,10 +288,14 @@ int main()
 			if (wireframe) glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 			else glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 		}
-			
+
 		if (ImGui::CollapsingHeader("Scene Colors"))
 		{
 			ImGui::ColorEdit4("Background Color", (float*)&clearColor);
+
+			ImGui::SliderFloat("Ambient Multiplier", &ambientMultiplier, 0.0f, 1.0f);
+			ImGui::SliderFloat("Diffuse Multiplier", &diffuseMultiplier, 0.0f, 1.0f);
+			ImGui::SliderFloat("Specular Multiplier", &specularMultiplier, 0.0f, 1.0f);
 			
 			if (ImGui::TreeNode("Material"))
 			{
@@ -316,7 +326,7 @@ int main()
 						ImGui::ColorEdit3("Color", (float*)&pointLights[i].color);
 						ImGui::SliderFloat("Linear Falloff", &pointLights[i].linear, 0.0f, 0.5f);
 						ImGui::SliderFloat("Quadratic Falloff", &pointLights[i].quadratic, 0.0f, 0.5f);
-						
+
 						ImGui::TreePop();
 					}
 				}
@@ -364,9 +374,9 @@ int main()
 
 		// Directional Light attributes.
 		lightingShader.setVec3("directionalLight.direction", directionalLight.direction);
-		lightingShader.setVec3("directionalLight.ambient", directionalLight.color * 0.1f);
-		lightingShader.setVec3("directionalLight.diffuse", directionalLight.color * 0.5f);
-		lightingShader.setVec3("directionalLight.specular", directionalLight.color);
+		lightingShader.setVec3("directionalLight.ambient", directionalLight.color * ambientMultiplier);
+		lightingShader.setVec3("directionalLight.diffuse", directionalLight.color * diffuseMultiplier);
+		lightingShader.setVec3("directionalLight.specular", directionalLight.color * specularMultiplier);
 
 		// Point Light attributes.
 		for (int i = 0; i < NR_POINT_LIGHTS; i++)
@@ -377,15 +387,15 @@ int main()
 			
 			std::ostringstream ss2;
 			ss2 << "pointLights[" << i << "].ambient";
-			lightingShader.setVec3(ss2.str(), pointLights[i].color * 0.1f);
+			lightingShader.setVec3(ss2.str(), pointLights[i].color * ambientMultiplier);
 
 			std::ostringstream ss3;
 			ss3 << "pointLights[" << i << "].diffuse";
-			lightingShader.setVec3(ss3.str(), pointLights[i].color * 0.5f);
+			lightingShader.setVec3(ss3.str(), pointLights[i].color * diffuseMultiplier);
 
 			std::ostringstream ss4;
 			ss4 << "pointLights[" << i << "].specular";
-			lightingShader.setVec3(ss4.str(), pointLights[i].color);
+			lightingShader.setVec3(ss4.str(), pointLights[i].color * specularMultiplier);
 
 			std::ostringstream ss5;
 			ss5 << "pointLights[" << i << "].constant";
@@ -405,9 +415,9 @@ int main()
 		spotLight.direction = camera.Front;
 		lightingShader.setVec3("spotLight.position", spotLight.position);
 		lightingShader.setVec3("spotLight.direction", spotLight.direction);
-		lightingShader.setVec3("spotLight.ambient", spotLight.color * 0.1f);
-		lightingShader.setVec3("spotLight.diffuse", spotLight.color * 0.5f);
-		lightingShader.setVec3("spotLight.specular", spotLight.color);
+		lightingShader.setVec3("spotLight.ambient", spotLight.color * ambientMultiplier);
+		lightingShader.setVec3("spotLight.diffuse", spotLight.color * diffuseMultiplier);
+		lightingShader.setVec3("spotLight.specular", spotLight.color * specularMultiplier);
 		lightingShader.setFloat("spotLight.constant", spotLight.constant);
 		lightingShader.setFloat("spotLight.linear", spotLight.linear);
 		lightingShader.setFloat("spotLight.quadratic", spotLight.quadratic);
