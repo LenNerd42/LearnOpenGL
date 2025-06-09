@@ -114,7 +114,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>glfw3.lib;opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>glfw3.lib;opengl32.lib;assimp-vc143-mtd.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories);$(_ZVcpkgCurrentInstalledDir)$(_ZVcpkgConfigSubdir)lib;$(_ZVcpkgCurrentInstalledDir)$(_ZVcpkgConfigSubdir)lib\manual-link;D:\EverythingLennart\DigitalExperiments\LearnOpenGL\LearnOpenGL\lib</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
@@ -134,12 +134,14 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories);$(_ZVcpkgCurrentInstalledDir)$(_ZVcpkgConfigSubdir)lib;$(_ZVcpkgCurrentInstalledDir)$(_ZVcpkgConfigSubdir)lib\manual-link;D:\EverythingLennart\DigitalExperiments\LearnOpenGL\LearnOpenGL\lib</AdditionalLibraryDirectories>
-      <AdditionalDependencies>%(AdditionalDependencies);$(_ZVcpkgCurrentInstalledDir)$(_ZVcpkgConfigSubdir)lib\*.lib;glfw3.lib</AdditionalDependencies>
+      <AdditionalDependencies>%(AdditionalDependencies);$(_ZVcpkgCurrentInstalledDir)$(_ZVcpkgConfigSubdir)lib\*.lib;glfw3.lib;opengl32.lib;assimp-vc143-mt.lib</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="src\glad.c" />
     <ClCompile Include="src\Main.cpp" />
+    <ClCompile Include="src\Mesh.cpp" />
+    <ClCompile Include="src\Model.cpp" />
     <ClCompile Include="src\Shader.cpp" />
     <ClCompile Include="src\Util.cpp" />
   </ItemGroup>
@@ -161,6 +163,8 @@
     <ClInclude Include="src/imgui/imstb_truetype.h" />
     <ClInclude Include="src/imgui/backends/imgui_impl_glfw.h" />
     <ClInclude Include="src/imgui/backends/imgui_impl_opengl3.h" />
+    <ClInclude Include="src\Mesh.h" />
+    <ClInclude Include="src\Model.h" />
     <ClInclude Include="src\Util.h" />
   </ItemGroup>
   <ItemGroup>
@@ -175,6 +179,8 @@
     <Content Include="shaders\lighting.vsh" />
     <Content Include="shaders\lightsource.fsh" />
     <Content Include="shaders\lightsource.vsh" />
+    <Content Include="shaders\model.fsh" />
+    <Content Include="shaders\model.vsh" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="shaders\basic.fsh" />

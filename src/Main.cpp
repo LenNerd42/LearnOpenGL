@@ -1,5 +1,6 @@
 #include <iostream>
 #include <sstream>
+#include <string>
 
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
@@ -19,65 +20,7 @@
 
 #include "Shader.h"
 #include "Camera.h"
-#include "Util.h"
-
-float vertices[] = {
-    // positions          // normals           // texture coords
-    -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  0.0f, 0.0f,
-     0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  1.0f, 0.0f,
-     0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  1.0f, 1.0f,
-     0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  1.0f, 1.0f,
-    -0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  0.0f, 1.0f,
-    -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  0.0f, 0.0f,
-
-    -0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,   0.0f, 0.0f,
-     0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,   1.0f, 0.0f,
-     0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,   1.0f, 1.0f,
-     0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,   1.0f, 1.0f,
-    -0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,   0.0f, 1.0f,
-    -0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,   0.0f, 0.0f,
-
-    -0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,  1.0f, 0.0f,
-    -0.5f,  0.5f, -0.5f, -1.0f,  0.0f,  0.0f,  1.0f, 1.0f,
-    -0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,  0.0f, 1.0f,
-    -0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,  0.0f, 1.0f,
-    -0.5f, -0.5f,  0.5f, -1.0f,  0.0f,  0.0f,  0.0f, 0.0f,
-    -0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,  1.0f, 0.0f,
-
-     0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,  1.0f, 0.0f,
-     0.5f,  0.5f, -0.5f,  1.0f,  0.0f,  0.0f,  1.0f, 1.0f,
-     0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,  0.0f, 1.0f,
-     0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,  0.0f, 1.0f,
-     0.5f, -0.5f,  0.5f,  1.0f,  0.0f,  0.0f,  0.0f, 0.0f,
-     0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,  1.0f, 0.0f,
-
-    -0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,  0.0f, 1.0f,
-     0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,  1.0f, 1.0f,
-     0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,  1.0f, 0.0f,
-     0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,  1.0f, 0.0f,
-    -0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,  0.0f, 0.0f,
-    -0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,  0.0f, 1.0f,
-
-    -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,  0.0f, 1.0f,
-     0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,  1.0f, 1.0f,
-     0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,  1.0f, 0.0f,
-     0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,  1.0f, 0.0f,
-    -0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,  0.0f, 0.0f,
-    -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,  0.0f, 1.0f
-};
-
-glm::vec3 cubePositions[] = {
-	glm::vec3( 0.0f,  0.0f,  0.0f), 
-	glm::vec3( 2.0f,  5.0f, -15.0f), 
-	glm::vec3(-1.5f, -2.2f, -2.5f),  
-	glm::vec3(-3.8f, -2.0f, -12.3f),  
-	glm::vec3( 2.4f, -0.4f, -3.5f),  
-	glm::vec3(-1.7f,  3.0f, -7.5f),  
-	glm::vec3( 1.3f, -2.0f, -2.5f),  
-	glm::vec3( 1.5f,  2.0f, -2.5f), 
-	glm::vec3( 1.5f,  0.2f, -1.5f), 
-	glm::vec3(-1.3f,  1.0f, -1.5f)  
-};
+#include "Model.h"
 
 glm::vec3 pointLightPositions[] = {
 	glm::vec3( 0.7f,  0.2f,  2.0f),
@@ -202,50 +145,10 @@ int main()
 	// Load and create textures
 	// OpenGL's y coordinates increase upwards, whereas a picture's y coordinates increase downwards.
 	stbi_set_flip_vertically_on_load(true);
-	
-	unsigned int diffuseMap = loadTexture("resources\\container2.png");
-	unsigned int specularMap = loadTexture("resources\\container2_specular.png");
-	unsigned int emissiveMap = loadTexture("resources\\matrix.jpg");
 
-
-	
-	// Set up vertex and fragment shaders for meshes and light source mesh.
-	Shader lightingShader = Shader("shaders\\lighting.vsh", "shaders\\lighting.fsh");
-	Shader lightSourceShader = Shader("shaders\\lightsource.vsh", "shaders\\lightsource.fsh");
-
-
-	
-	// Vertex setup
-	unsigned int VAO, VBO;
-
-	// Bind Vertex array object (VAO) to tell OpenGL how to fill input data for the vertex shader.
-	glGenVertexArrays(1, &VAO);
-	glBindVertexArray(VAO);
-
-	// Create a vertex buffer object (VBO) for storing our vertices on the GPU.
-	glGenBuffers(1, &VBO);
-	glBindBuffer(GL_ARRAY_BUFFER, VBO);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
-	// Enable vertex attrib pointers (vec3 pos, vec3 normal, vec2 texCoords)
-	VertexAttribBuilder meshAttribBuilder = VertexAttribBuilder();
-	meshAttribBuilder.AddAttribute(3, GL_FLOAT);
-	meshAttribBuilder.AddAttribute(3, GL_FLOAT);
-	meshAttribBuilder.AddAttribute(2, GL_FLOAT);
-	meshAttribBuilder.Finalize();
-
-
-	
-	// Light VAO
-	unsigned int lightVAO;
-	glGenVertexArrays(1, &lightVAO);
-	glBindVertexArray(lightVAO);
-
-	glBindBuffer(GL_ARRAY_BUFFER, VBO);
-
-	// Can't use my new VertexAttribBuilder since the stride is custom (some data is skipped). 
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
-	glEnableVertexAttribArray(0);
+	// Add model shaders and model itself.
+	Shader modelShader = Shader("shaders\\model.vsh", "shaders\\model.fsh");
+	Model backpack = Model("resources\\backpack.obj");
 
 
 	
@@ -271,7 +174,7 @@ int main()
 		float currentFrame = glfwGetTime();
 		deltaTime = currentFrame - lastFrame;
 		lastFrame = currentFrame;
-		
+
 		// Input
 		processInput(window);
 
@@ -355,117 +258,56 @@ int main()
 		glClearColor(clearColor.x, clearColor.y, clearColor.z, clearColor.w);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		// Bind textures to texture units/targets for the samplers to use.
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, diffuseMap);
-		glActiveTexture(GL_TEXTURE1);
-		glBindTexture(GL_TEXTURE_2D, specularMap);
-		glActiveTexture(GL_TEXTURE2);
-		glBindTexture(GL_TEXTURE_2D, emissiveMap);
+		// Defining view matrices (model, view, projection) to transform vertices to NDC.
+		glm::mat4 view = camera.GetViewMatrix();
+		glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)windowWidth / (float)windowHeight, 0.1f, 100.0f);
+		glm::mat4 model = glm::mat4(1.0f);
 
-		// Set lighting-related values for our fragment shader.
-		lightingShader.use();
-		// Use texture unit 0 as sampler source for the diffuse map and so on.
-		lightingShader.setInt("material.diffuse", 0);
-		lightingShader.setInt("material.specular", 1);
-		lightingShader.setInt("material.emissive", 2);
-		lightingShader.setFloat("material.shininess", material.shininess);
-		lightingShader.setFloat("material.emissiveStrength", material.emissiveStrength);
+		// Send transformation matrices to shader. Send them every frame since they tend to change often.
+		modelShader.use();
+		modelShader.setMat4("model", model);
+		modelShader.setMat4("view", view);
+		modelShader.setMat4("projection", projection);
+
+		// Send material and lighting information to shader.
+		modelShader.setFloat("material.shininess", material.shininess);
 
 		// Directional Light attributes.
-		lightingShader.setVec3("directionalLight.direction", directionalLight.direction);
-		lightingShader.setVec3("directionalLight.ambient", directionalLight.color * ambientMultiplier);
-		lightingShader.setVec3("directionalLight.diffuse", directionalLight.color * diffuseMultiplier);
-		lightingShader.setVec3("directionalLight.specular", directionalLight.color * specularMultiplier);
+		modelShader.setVec3("directionalLight.direction", directionalLight.direction);
+		modelShader.setVec3("directionalLight.ambient", directionalLight.color * ambientMultiplier);
+		modelShader.setVec3("directionalLight.diffuse", directionalLight.color * diffuseMultiplier);
+		modelShader.setVec3("directionalLight.specular", directionalLight.color * specularMultiplier);
 
 		// Point Light attributes.
 		for (int i = 0; i < NR_POINT_LIGHTS; i++)
 		{
-			std::ostringstream ss1;
-			ss1 << "pointLights[" << i << "].position";
-			lightingShader.setVec3(ss1.str(), pointLights[i].position);
+			std::string index = std::to_string(i);
 			
-			std::ostringstream ss2;
-			ss2 << "pointLights[" << i << "].ambient";
-			lightingShader.setVec3(ss2.str(), pointLights[i].color * ambientMultiplier);
-
-			std::ostringstream ss3;
-			ss3 << "pointLights[" << i << "].diffuse";
-			lightingShader.setVec3(ss3.str(), pointLights[i].color * diffuseMultiplier);
-
-			std::ostringstream ss4;
-			ss4 << "pointLights[" << i << "].specular";
-			lightingShader.setVec3(ss4.str(), pointLights[i].color * specularMultiplier);
-
-			std::ostringstream ss5;
-			ss5 << "pointLights[" << i << "].constant";
-			lightingShader.setFloat(ss5.str(), pointLights[i].constant);
-
-			std::ostringstream ss6;
-			ss6 << "pointLights[" << i << "].linear";
-			lightingShader.setFloat(ss6.str(), pointLights[i].linear);
-
-			std::ostringstream ss7;
-			ss7 << "pointLights[" << i << "].quadratic";
-			lightingShader.setFloat(ss7.str(), pointLights[i].quadratic);
+			modelShader.setVec3("pointLights[" + index + "].position", pointLights[i].position);
+			modelShader.setVec3("pointLights[" + index + "].ambient", pointLights[i].color * ambientMultiplier);
+			modelShader.setVec3("pointLights[" + index + "].diffuse", pointLights[i].color * diffuseMultiplier);
+			modelShader.setVec3("pointLights[" + index + "].specular", pointLights[i].color * specularMultiplier);
+			modelShader.setFloat("pointLights[" + index + "].constant", pointLights[i].constant);
+			modelShader.setFloat("pointLights[" + index + "].linear", pointLights[i].linear);
+			modelShader.setFloat("pointLights[" + index + "].quadratic", pointLights[i].quadratic);
 		}
 
 		// Spotlight attributes.
 		spotLight.position = camera.Position;
 		spotLight.direction = camera.Front;
-		lightingShader.setVec3("spotLight.position", spotLight.position);
-		lightingShader.setVec3("spotLight.direction", spotLight.direction);
-		lightingShader.setVec3("spotLight.ambient", spotLight.color * ambientMultiplier);
-		lightingShader.setVec3("spotLight.diffuse", spotLight.color * diffuseMultiplier);
-		lightingShader.setVec3("spotLight.specular", spotLight.color * specularMultiplier);
-		lightingShader.setFloat("spotLight.constant", spotLight.constant);
-		lightingShader.setFloat("spotLight.linear", spotLight.linear);
-		lightingShader.setFloat("spotLight.quadratic", spotLight.quadratic);
-		lightingShader.setFloat("spotLight.cutOff", glm::cos(glm::radians(spotLight.cutOff)));
-		lightingShader.setFloat("spotLight.outerCutOff", glm::cos(glm::radians(spotLight.outerCutOff)));
+		modelShader.setVec3("spotLight.position", spotLight.position);
+		modelShader.setVec3("spotLight.direction", spotLight.direction);
+		modelShader.setVec3("spotLight.ambient", spotLight.color * ambientMultiplier);
+		modelShader.setVec3("spotLight.diffuse", spotLight.color * diffuseMultiplier);
+		modelShader.setVec3("spotLight.specular", spotLight.color * specularMultiplier);
+		modelShader.setFloat("spotLight.constant", spotLight.constant);
+		modelShader.setFloat("spotLight.linear", spotLight.linear);
+		modelShader.setFloat("spotLight.quadratic", spotLight.quadratic);
+		modelShader.setFloat("spotLight.cutOff", glm::cos(glm::radians(spotLight.cutOff)));
+		modelShader.setFloat("spotLight.outerCutOff", glm::cos(glm::radians(spotLight.outerCutOff)));
 
-		// Defining view matrices (model [not here], view, projection) to transform vertices to NDC.
-		glm::mat4 view = camera.GetViewMatrix();
-		glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)windowWidth / (float)windowHeight, 0.1f, 100.0f);
-
-		// Send transformation matrices to shader. Send them every frame since they tend to change often.
-		lightingShader.setMat4("view", view);
-		lightingShader.setMat4("projection", projection);
-
-		// Draw multiple cubes, each with a different offset and rotation over time.
-		glBindVertexArray(VAO);
-		for(unsigned int i = 0; i < 10; i++)
-		{
-			glm::mat4 model = glm::mat4(1.0f);
-			model = glm::translate(model, cubePositions[i]);
-			float angle = 20.0f * i;
-			model = glm::rotate(model, static_cast<float>(glfwGetTime()) * glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
-			lightingShader.setMat4("model", model);
-
-			glDrawArrays(GL_TRIANGLES, 0, 36);
-		}
-
-		// Configure the light source shader.
-		lightSourceShader.use();
-		lightSourceShader.setMat4("view", view);
-		lightSourceShader.setMat4("projection", projection);
-
-		// Draw the light source cubes.
-		glBindVertexArray(lightVAO);
-		for (unsigned int i = 0; i < NR_POINT_LIGHTS; i++)
-		{
-			glm::mat4 model = glm::mat4(1.0f);
-			model = glm::translate(model, pointLights[i].position);
-			model = glm::scale(model, glm::vec3(0.2f));
-			lightSourceShader.setMat4("model", model);
-
-			lightSourceShader.setVec3("lightColor", pointLights[i].color);
-			
-			glDrawArrays(GL_TRIANGLES, 0, 36);
-		}
-
-		// Unbind the vertex array after it has been used.
-		glBindVertexArray(0);
+		// Draw our 3D model!
+		backpack.Draw(modelShader);
 
 		// ImGui: Render
 		ImGui::Render();
@@ -475,11 +317,6 @@ int main()
 		glfwSwapBuffers(window);
 		glfwPollEvents();
 	}
-
-	// De-allocate all arrays and buffers when the program terminates.
-	glDeleteVertexArrays(1, &VAO);
-	glDeleteVertexArrays(1, &lightVAO);
-	glDeleteBuffers(1, &VBO);
 
 	// Shut down Dear ImGui.
 	ImGui_ImplOpenGL3_Shutdown();
